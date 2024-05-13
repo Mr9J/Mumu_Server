@@ -2,14 +2,10 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.IdentityModel.Tokens;
 using Mumu_Server.Models;
 using Mumu_Server.Models.Types;
 using Mumu_Server.Query;
 using Mumu_Server.Services;
-using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
-using System.Text;
 
 namespace Mumu_Server.Controllers
 {
@@ -18,12 +14,10 @@ namespace Mumu_Server.Controllers
     public class MemberController : ControllerBase
     {
         private readonly MumuDbContext context;
-        private readonly IConfiguration configuration;
 
         public MemberController(MumuDbContext _context, IConfiguration _configuration)
         {
             this.context = _context;
-            this.configuration = _configuration;
         }
 
         [HttpPost("sign-up")]
@@ -61,13 +55,11 @@ namespace Mumu_Server.Controllers
                     return BadRequest("帳號或密碼錯誤，請確認您輸入的資訊是否正確");
                 }
 
-                var token = CreateToken(foundMember);
-
-                return Ok(token);
+                return Ok("登入成功");
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                return BadRequest(ex);
+                return BadRequest("500 Internal Server Error");
                 throw;
             }
         }
@@ -79,35 +71,13 @@ namespace Mumu_Server.Controllers
             {
                 var result = from a in context.Members
                              select a;
+
                 return result;
             }
             catch (Exception)
             {
                 throw;
             }
-        }
-
-        private string CreateToken(Member member)
-        {
-            List<Claim> claims = new List<Claim>
-            {
-                new Claim(ClaimTypes.Name,member.Username.ToString())
-            };
-
-            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(
-                configuration.GetSection("AppSettings:Token").Value!));
-
-            var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha512Signature);
-
-            var token = new JwtSecurityToken(
-                claims: claims,
-                expires: DateTime.Now.AddDays(1),
-                signingCredentials: creds);
-
-            var tokenHandler = new JwtSecurityTokenHandler();
-            var encryptedToken = tokenHandler.WriteToken(token);
-
-            return encryptedToken;
         }
     }
 }
