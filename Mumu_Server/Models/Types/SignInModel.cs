@@ -2,7 +2,7 @@
 {
     public class SignInModel
     {
-        public string username { get; set; } = null!;
-        public string password { get; set; } = null!;
+        public string username { get; set; } = string.Empty;
+        public string password { get; set; } = string.Empty;
     }
 }
