@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Http;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Mumu_Server.Models;
 
@@ -15,12 +16,10 @@ namespace Mumu_Server.Controllers
             this.context = context;
         }
 
-        [HttpGet]
-        public string MyGo()
+        [HttpGet, Authorize]
+        public ActionResult IsAuth()
         {
-            int a = context.Members.ToList().Count();
-
-            return "MyGO!" + a;
+            return Ok(true);
         }
     }
 }

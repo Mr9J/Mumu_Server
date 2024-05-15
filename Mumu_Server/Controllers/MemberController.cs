@@ -10,6 +10,7 @@ using Mumu_Server.Models.Types;
 using Mumu_Server.Query;
 using Mumu_Server.Services;
 using Microsoft.EntityFrameworkCore;
+using System.Collections;
 
 namespace Mumu_Server.Controllers
 {
@@ -20,10 +21,10 @@ namespace Mumu_Server.Controllers
         private readonly MumuDbContext context;
         private readonly IConfiguration config;
 
-        public MemberController(MumuDbContext _context, IConfiguration _configuration)
+        public MemberController(MumuDbContext _context, IConfiguration _config)
         {
             this.context = _context;
-            this.config = _configuration;
+            this.config = _config;
         }
 
         [HttpPost("sign-up")]
@@ -61,9 +62,22 @@ namespace Mumu_Server.Controllers
                     return BadRequest("帳號或密碼錯誤，請確認您輸入的資訊是否正確");
                 }
 
-                var token = CreateToken(req);
+                string message = "登入成功";
+                string user = req.username;
+                string token = "";
 
-                return Ok(new { token });
+                Admin? foundAdmin = await context.Admins.FirstOrDefaultAsync(x => x.MemberId == foundMember.MemberId);
+
+                if (foundAdmin == null)
+                {
+                    token = "Bearer " + CreateToken(req, "User");
+                }
+                else
+                {
+                    token= "Bearer " + CreateToken(req, "Admin");
+                }
+
+                return Ok(new { message, user, token });
             }
             catch (Exception ex)
             {
@@ -72,28 +86,58 @@ namespace Mumu_Server.Controllers
             }
         }
 
-        [HttpGet]
-        public IEnumerable<Member> AllMember()
+        [HttpGet("current-user"), Authorize]
+        public async Task<IActionResult> CurrentUser()
         {
-            try
-            {
-                var result = from a in context.Members
-                             select a;
+            string username = GetJwtPayload(ClaimTypes.Name);
 
-                return result;
-            }
-            catch (Exception)
+            Member? member = await context.Members.FirstOrDefaultAsync(x => x.Username == username);
+
+            if (member != null)
             {
-                throw;
+                CurrentUserModel cu = new CurrentUserModel
+                {
+                    id = member.MemberId,
+                    nickname = member.Nickname,
+                    email = member.Email,
+                    username = member.Username,
+                    role = GetJwtPayload(ClaimTypes.Role),
+                };
+
+                return Ok(cu);
             }
+
+            return BadRequest();
         }
 
-        private string CreateToken(SignInModel user)
+        private string GetJwtPayload(string claimType)
+        {
+            var jwtToken = HttpContext.Request.Headers["Authorization"].ToString()
+                            .Replace("Bearer ", "");
+
+            var handler = new JwtSecurityTokenHandler();
+
+            var jsonToken = handler.ReadJwtToken(jwtToken);
+
+            var payload = jsonToken.Payload;
+
+            var claims = payload.Claims;
+
+            var specificClaim = payload.Claims.FirstOrDefault(a => a.Type == claimType)?.Value;
+
+            if (specificClaim != null)
+            {
+                return specificClaim;
+            }
+
+            return "Not found";
+        }
+
+        private string CreateToken(SignInModel user, string role)
         {
             List<Claim> claims = new List<Claim> {
                 new Claim(ClaimTypes.Name, user.username),
-                new Claim(ClaimTypes.Role, "Admin"),
-                new Claim(ClaimTypes.Role, "User"),
+                new Claim(ClaimTypes.Role, role),
             };
 
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(
@@ -111,5 +155,6 @@ namespace Mumu_Server.Controllers
 
             return jwt;
         }
+
     }
 }

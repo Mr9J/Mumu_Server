@@ -19,6 +19,8 @@ public partial class MumuDbContext : DbContext
 
     public virtual DbSet<ActionDetail> ActionDetails { get; set; }
 
+    public virtual DbSet<Admin> Admins { get; set; }
+
     public virtual DbSet<AuthStatus> AuthStatuses { get; set; }
 
     public virtual DbSet<Cart> Carts { get; set; }
@@ -80,6 +82,13 @@ public partial class MumuDbContext : DbContext
             entity.HasOne(d => d.Action).WithMany(p => p.ActionDetails)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("FK_ActionDetails_Actions");
+        });
+
+        modelBuilder.Entity<Admin>(entity =>
+        {
+            entity.HasOne(d => d.Member).WithMany(p => p.Admins)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_Admins_Members");
         });
 
         modelBuilder.Entity<AuthStatus>(entity =>
